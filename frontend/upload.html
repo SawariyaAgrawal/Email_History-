@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Excel - Email History</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <span>Email History</span>
+    <div>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="upload.html">Upload</a>
+      <a href="#" id="logoutLink">Logout</a>
+    </div>
+  </header>
+  <div class="container upload-page">
+    <div class="upload-card">
+      <h1>Upload Excel file</h1>
+      <p>Only .xlsx files are accepted. Each row will be stored as a record.</p>
+      <form id="uploadForm">
+        <div class="form-group">
+          <label for="file">Choose .xlsx file</label>
+          <input type="file" id="file" name="file" accept=".xlsx" required>
+        </div>
+        <button type="submit" class="btn" id="submitBtn">Upload</button>
+        <p class="error-msg hidden" id="errorMsg"></p>
+        <p class="success-msg hidden" id="successMsg"></p>
+      </form>
+    </div>
+  </div>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      if (!auth.isAuthenticated()) {
+        window.location.href = 'login.html';
+        return;
+      }
+      document.getElementById('logoutLink').addEventListener('click', function (e) {
+        e.preventDefault();
+        auth.removeToken();
+        auth.removeRegion();
+        window.location.href = 'login.html';
+      });
+      var form = document.getElementById('uploadForm');
+      var errorMsg = document.getElementById('errorMsg');
+      var successMsg = document.getElementById('successMsg');
+      var submitBtn = document.getElementById('submitBtn');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        errorMsg.classList.add('hidden');
+        successMsg.classList.add('hidden');
+        var fileInput = document.getElementById('file');
+        if (!fileInput.files.length) {
+          errorMsg.textContent = 'Please select a file.';
+          errorMsg.classList.remove('hidden');
+          return;
+        }
+        var file = fileInput.files[0];
+        var ext = file.name.split('.').pop().toLowerCase();
+        if (ext !== 'xlsx') {
+          errorMsg.textContent = 'Only .xlsx files are allowed.';
+          errorMsg.classList.remove('hidden');
+          return;
+        }
+        submitBtn.disabled = true;
+        var formData = new FormData();
+        formData.append('file', file);
+        fetch(auth.getApiUrl('/upload'), {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + auth.getToken() },
+          body: formData
+        })
+          .then(function (res) { return res.json().then(function (data) { return { status: res.status, data: data }; }); })
+          .then(function (result) {
+            if (result.status === 201) {
+              successMsg.textContent = (result.data.message || 'Uploaded.') + ' ' + (result.data.count || 0) + ' record(s). Redirecting...';
+              successMsg.classList.remove('hidden');
+              setTimeout(function () { window.location.href = 'dashboard.html'; }, 1500);
+            } else {
+              errorMsg.textContent = result.data.error || 'Upload failed.';
+              errorMsg.classList.remove('hidden');
+              submitBtn.disabled = false;
+            }
+          })
+          .catch(function () {
+            errorMsg.textContent = 'Network error. Please try again.';
+            errorMsg.classList.remove('hidden');
+            submitBtn.disabled = false;
+          });
+      });
+    })();
+  </script>
+</body>
+</html>

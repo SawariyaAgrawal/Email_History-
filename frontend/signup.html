@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign up - Email History</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="login-page">
+    <div class="login-card">
+      <h1>Sign up</h1>
+      <form id="signupForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required minlength="6" placeholder="At least 6 characters" autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn btn-block" id="submitBtn">Sign up</button>
+        <p class="error-msg hidden" id="errorMsg"></p>
+        <p class="success-msg hidden" id="successMsg"></p>
+      </form>
+      <p class="link-below-form">Already have an account? <a href="login.html">Log in</a></p>
+    </div>
+  </main>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      if (auth.isAuthenticated()) {
+        window.location.href = 'dashboard.html';
+        return;
+      }
+      var form = document.getElementById('signupForm');
+      var errorMsg = document.getElementById('errorMsg');
+      var successMsg = document.getElementById('successMsg');
+      var submitBtn = document.getElementById('submitBtn');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        errorMsg.classList.add('hidden');
+        successMsg.classList.add('hidden');
+        submitBtn.disabled = true;
+        var email = document.getElementById('email').value.trim();
+        var password = document.getElementById('password').value;
+        if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
+          errorMsg.textContent = 'Please run the server and open the app at http://localhost:3000';
+          errorMsg.classList.remove('hidden');
+          submitBtn.disabled = false;
+          return;
+        }
+        fetch(auth.getApiUrl('/auth/signup'), {
+          method: 'POST',
+          mode: 'cors',
+          headers: auth.getAuthHeaders(),
+          body: JSON.stringify({ email: email, password: password })
+        })
+          .then(function (res) { return res.text().then(function (text) {
+            var data = {};
+            try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { error: 'Invalid response from server.' }; }
+            if (res.ok && !data.token && !data.error) data.error = 'Invalid response from server.';
+            return { ok: res.ok, status: res.status, data: data };
+          }); })
+          .then(function (result) {
+            if (result.ok && result.data.token) {
+              auth.setToken(result.data.token);
+              successMsg.textContent = 'Account created. Redirecting...';
+              successMsg.classList.remove('hidden');
+              setTimeout(function () { window.location.href = 'login.html'; }, 1000);
+            } else {
+              errorMsg.textContent = result.data.error || 'Signup failed.';
+              errorMsg.classList.remove('hidden');
+              submitBtn.disabled = false;
+            }
+          })
+          .catch(function (err) {
+            errorMsg.textContent = 'Network error. Open the app at http://localhost:3000 and ensure the server is running.';
+            errorMsg.classList.remove('hidden');
+            submitBtn.disabled = false;
+          });
+      });
+    })();
+  </script>
+</body>
+</html>

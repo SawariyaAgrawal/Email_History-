@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add information - Communication</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container communication-page">
+    <h1>Add information</h1>
+    <p class="text-muted">Record: <span id="recordIdDisplay"></span> &nbsp;|&nbsp; Visit date: <span id="visitDateDisplay"></span></p>
+    <p class="text-muted form-hint">All fields are optional – you can save partial information.</p>
+    <form id="communicationForm" class="communication-form" novalidate>
+      <div class="form-group">
+        <label for="salesOfficerVisitDate">1. Sales officer visit date</label>
+        <input type="date" id="salesOfficerVisitDate" name="salesOfficerVisitDate" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="form-group">
+        <label for="majorMinorIrregularities">2. Major / Minor Irregularities</label>
+        <input type="text" id="majorMinorIrregularities" name="majorMinorIrregularities" placeholder="Enter Major or Minor irregularities">
+      </div>
+      <div class="form-group">
+        <label for="deviationNoticedNo">3a. If Major Irregularities – Deviation Noticed No.</label>
+        <input type="text" id="deviationNoticedNo" name="deviationNoticedNo" placeholder="e.g. No. 123">
+      </div>
+      <div class="form-group">
+        <label for="deviationNoticedDate">3b. If Major Irregularities – Deviation Noticed Date</label>
+        <input type="date" id="deviationNoticedDate" name="deviationNoticedDate" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="form-group">
+        <label for="replyReceivedByDealerDate">4. Reply Received By Dealer date</label>
+        <input type="date" id="replyReceivedByDealerDate" name="replyReceivedByDealerDate" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="form-group">
+        <label for="replySatisfactoryYesNo">5. Reply satisfactory yes / no</label>
+        <input type="text" id="replySatisfactoryYesNo" name="replySatisfactoryYesNo" placeholder="Yes or No">
+      </div>
+      <div class="form-group">
+        <label for="impositionOfMDGPenaltyNoticeDate">6. If Not satisfactory – Imposition of MDG Penalty notice date</label>
+        <input type="date" id="impositionOfMDGPenaltyNoticeDate" name="impositionOfMDGPenaltyNoticeDate" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="form-group">
+        <label for="reminder1Date">7. Reminder 1 date</label>
+        <input type="date" id="reminder1Date" name="reminder1Date" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="form-group">
+        <label for="reminder1ReplyDate">8. Reply date</label>
+        <input type="date" id="reminder1ReplyDate" name="reminder1ReplyDate" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="form-group">
+        <label for="reminder2Date">9. Reminder 2 date</label>
+        <input type="date" id="reminder2Date" name="reminder2Date" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="form-group">
+        <label for="reminder2ReplyDate">10. Reply date</label>
+        <input type="date" id="reminder2ReplyDate" name="reminder2ReplyDate" placeholder="YYYY-MM-DD">
+      </div>
+      <div class="form-group">
+        <label for="penaltyRecoverBy">11. Penalty recover by TAR account / by EMI / By RTGS DD – No. and Date</label>
+        <input type="text" id="penaltyRecoverBy" name="penaltyRecoverBy" placeholder="TAR account / EMI / RTGS DD">
+      </div>
+      <div class="form-group">
+        <label for="penaltyRTGSDDNoAndDate">RTGS/DD No. and Date (if applicable)</label>
+        <input type="text" id="penaltyRTGSDDNoAndDate" name="penaltyRTGSDDNoAndDate" placeholder="No. and Date">
+      </div>
+      <div class="form-group">
+        <label for="emiDates">12. If EMI then EMI dates</label>
+        <input type="text" id="emiDates" name="emiDates" placeholder="EMI dates">
+      </div>
+      <div class="form-group">
+        <label for="transitionComplete">13. Transition Complete</label>
+        <input type="text" id="transitionComplete" name="transitionComplete" placeholder="Yes / No or details">
+      </div>
+      <button type="submit" class="btn">Save</button>
+    </form>
+    <p class="error-msg hidden" id="errorMsg"></p>
+    <p class="success-msg hidden" id="successMsg"></p>
+  </div>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var recordId = params.get('recordId');
+      var visitDate = params.get('visitDate');
+      document.getElementById('recordIdDisplay').textContent = recordId || '(none)';
+      document.getElementById('visitDateDisplay').textContent = visitDate || '(select visit date)';
+
+      if (!recordId || !visitDate) {
+        document.getElementById('errorMsg').textContent = 'Record ID and Visit date are required.';
+        document.getElementById('errorMsg').classList.remove('hidden');
+      }
+
+      function toYMD(d) {
+        if (!d) return '';
+        var x = new Date(d);
+        if (isNaN(x.getTime())) return '';
+        var y = x.getFullYear(), m = x.getMonth() + 1, day = x.getDate();
+        return y + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+      }
+
+      function loadExisting() {
+        if (!recordId || !visitDate) return;
+        fetch(auth.getApiUrl('/records/' + encodeURIComponent(recordId) + '/communications/by-date?visitDate=' + encodeURIComponent(visitDate)), { headers: auth.getAuthHeaders() })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data) return;
+            if (data.salesOfficerVisitDate) document.getElementById('salesOfficerVisitDate').value = data.salesOfficerVisitDate;
+            if (data.majorMinorIrregularities != null) document.getElementById('majorMinorIrregularities').value = data.majorMinorIrregularities;
+            if (data.deviationNoticedNo != null) document.getElementById('deviationNoticedNo').value = data.deviationNoticedNo;
+            if (data.deviationNoticedDate) document.getElementById('deviationNoticedDate').value = data.deviationNoticedDate;
+            if (data.replyReceivedByDealerDate) document.getElementById('replyReceivedByDealerDate').value = data.replyReceivedByDealerDate;
+            if (data.replySatisfactoryYesNo != null) document.getElementById('replySatisfactoryYesNo').value = data.replySatisfactoryYesNo;
+            if (data.impositionOfMDGPenaltyNoticeDate) document.getElementById('impositionOfMDGPenaltyNoticeDate').value = data.impositionOfMDGPenaltyNoticeDate;
+            if (data.reminder1Date) document.getElementById('reminder1Date').value = data.reminder1Date;
+            if (data.reminder1ReplyDate) document.getElementById('reminder1ReplyDate').value = data.reminder1ReplyDate;
+            if (data.reminder2Date) document.getElementById('reminder2Date').value = data.reminder2Date;
+            if (data.reminder2ReplyDate) document.getElementById('reminder2ReplyDate').value = data.reminder2ReplyDate;
+            if (data.penaltyRecoverBy != null) document.getElementById('penaltyRecoverBy').value = data.penaltyRecoverBy;
+            if (data.penaltyRTGSDDNoAndDate != null) document.getElementById('penaltyRTGSDDNoAndDate').value = data.penaltyRTGSDDNoAndDate;
+            if (data.emiDates != null) document.getElementById('emiDates').value = data.emiDates;
+            if (data.transitionComplete != null) document.getElementById('transitionComplete').value = data.transitionComplete;
+          })
+          .catch(function () {});
+      }
+      loadExisting();
+
+      document.getElementById('communicationForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        document.getElementById('errorMsg').classList.add('hidden');
+        document.getElementById('successMsg').classList.add('hidden');
+        if (!recordId || !visitDate) {
+          document.getElementById('errorMsg').textContent = 'Record ID and Visit date are required.';
+          document.getElementById('errorMsg').classList.remove('hidden');
+          return;
+        }
+        var payload = {
+          visitDate: visitDate,
+          salesOfficerVisitDate: document.getElementById('salesOfficerVisitDate').value || null,
+          majorMinorIrregularities: document.getElementById('majorMinorIrregularities').value,
+          deviationNoticedNo: document.getElementById('deviationNoticedNo').value,
+          deviationNoticedDate: document.getElementById('deviationNoticedDate').value || null,
+          replyReceivedByDealerDate: document.getElementById('replyReceivedByDealerDate').value || null,
+          replySatisfactoryYesNo: document.getElementById('replySatisfactoryYesNo').value,
+          impositionOfMDGPenaltyNoticeDate: document.getElementById('impositionOfMDGPenaltyNoticeDate').value || null,
+          reminder1Date: document.getElementById('reminder1Date').value || null,
+          reminder1ReplyDate: document.getElementById('reminder1ReplyDate').value || null,
+          reminder2Date: document.getElementById('reminder2Date').value || null,
+          reminder2ReplyDate: document.getElementById('reminder2ReplyDate').value || null,
+          penaltyRecoverBy: document.getElementById('penaltyRecoverBy').value,
+          penaltyRTGSDDNoAndDate: document.getElementById('penaltyRTGSDDNoAndDate').value,
+          emiDates: document.getElementById('emiDates').value,
+          transitionComplete: document.getElementById('transitionComplete').value
+        };
+        fetch(auth.getApiUrl('/records/' + encodeURIComponent(recordId) + '/communications'), {
+          method: 'POST',
+          headers: auth.getAuthHeaders(),
+          body: JSON.stringify(payload)
+        })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }).catch(function () { return { ok: false, data: {} }; }); })
+          .then(function (result) {
+            if (result.ok) {
+              document.getElementById('successMsg').textContent = 'Saved successfully.';
+              document.getElementById('successMsg').classList.remove('hidden');
+              if (window.opener && window.opener.refreshVisitDatesList) window.opener.refreshVisitDatesList();
+            } else {
+              document.getElementById('errorMsg').textContent = result.data.error || 'Failed to save.';
+              document.getElementById('errorMsg').classList.remove('hidden');
+            }
+          })
+          .catch(function () {
+            document.getElementById('errorMsg').textContent = 'Network error.';
+            document.getElementById('errorMsg').classList.remove('hidden');
+          });
+      });
+    })();
+  </script>
+</body>
+</html>

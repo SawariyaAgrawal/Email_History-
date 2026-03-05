@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Email History</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <span>Email History</span>
+    <div>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="upload.html">Upload</a>
+      <a href="#" id="logoutLink">Logout</a>
+    </div>
+  </header>
+  <div class="container dashboard-page">
+    <h1>Records <span class="region-badge hidden" id="regionBadge"></span></h1>
+    <p class="record-count hidden" id="recordCount" style="color: #aaa; margin: 4px 0 12px;"></p>
+    <p class="empty-state hidden" id="emptyState"></p>
+    <div class="table-wrap hidden" id="tableWrap">
+      <table>
+        <thead id="tableHead">
+          <tr></tr>
+        </thead>
+        <tbody id="recordsTableBody"></tbody>
+      </table>
+    </div>
+    <p class="error-msg hidden" id="errorMsg"></p>
+  </div>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      if (!auth.isAuthenticated()) {
+        window.location.href = 'login.html';
+        return;
+      }
+      document.getElementById('logoutLink').addEventListener('click', function (e) {
+        e.preventDefault();
+        auth.removeToken();
+        auth.removeRegion();
+        window.location.href = 'login.html';
+      });
+      var tableHead = document.getElementById('tableHead');
+      var tableWrap = document.getElementById('tableWrap');
+      var emptyState = document.getElementById('emptyState');
+      var errorMsg = document.getElementById('errorMsg');
+      var regionBadge = document.getElementById('regionBadge');
+      var region = auth.getRegion();
+      var url = auth.getApiUrl('/records');
+      
+      if (region && String(region).trim() && String(region).toLowerCase() !== 'all') {
+        url += '?region=' + encodeURIComponent(region.trim());
+        regionBadge.textContent = '(Region: ' + region.trim() + ')';
+        regionBadge.classList.remove('hidden');
+      } else {
+        url += '?region=All';
+        regionBadge.textContent = '(All regions)';
+        regionBadge.classList.remove('hidden');
+      }
+      
+      fetch(url, {
+        headers: auth.getAuthHeaders()
+      })
+        .then(function (res) {
+          if (res.status === 401) {
+            auth.removeToken();
+            window.location.href = 'login.html';
+            return;
+          }
+          return res.json();
+        })
+        .then(function (data) {
+          if (!data) return;
+          if (data.error) {
+            errorMsg.textContent = data.error;
+            errorMsg.classList.remove('hidden');
+            return;
+          }
+          var records = Array.isArray(data) ? data : [];
+          var filteredRecords = records;
+
+          var countEl = document.getElementById('recordCount');
+          countEl.textContent = 'Total records: ' + filteredRecords.length;
+          countEl.classList.remove('hidden');
+
+          if (filteredRecords.length === 0) {
+            var regionLabel = region && String(region).trim() && String(region).toLowerCase() !== 'all' ? region.trim() : '';
+            emptyState.innerHTML = regionLabel
+              ? 'No records found for <strong>' + escapeHtml(regionLabel) + '</strong>. <a href="upload.html">Upload an Excel file</a> to add records, or <a href="login.html">log in with &quot;All&quot; regions</a> to see all records.'
+              : 'No records yet. <a href="upload.html">Upload an Excel file</a> to get started.';
+            emptyState.classList.remove('hidden');
+            tableWrap.classList.add('hidden');
+          } else {
+            emptyState.classList.add('hidden');
+            tableWrap.classList.remove('hidden');
+            renderTable(filteredRecords);
+          }
+        })
+        .catch(function () {
+          errorMsg.textContent = 'Failed to load records.';
+          errorMsg.classList.remove('hidden');
+        });
+      
+      // Get region from record - prioritize top-level region field
+      function getRegionFromRecord(rec) {
+        var top = rec.region != null ? String(rec.region).trim() : '';
+        if (top) return top;
+        var data = rec.data || {};
+        var keys = Object.keys(data);
+        var regionKey = keys.find(function (k) { return String(k).toLowerCase().trim() === 'region'; });
+        if (!regionKey) regionKey = keys.find(function (k) { return String(k).toLowerCase().indexOf('region') !== -1; });
+        var val = regionKey != null ? data[regionKey] : null;
+        return val != null ? String(val).trim() : '';
+      }
+      
+      function renderTable(records) {
+        var tableBody = document.getElementById('recordsTableBody');
+        var headRow = document.getElementById('tableHead').querySelector('tr');
+        tableBody.innerHTML = '';
+        if (!records.length) return;
+        var allKeys = [];
+        records.forEach(function (r) {
+          var d = r.data || {};
+          Object.keys(d).forEach(function (k) {
+            if (allKeys.indexOf(k) === -1) allKeys.push(k);
+          });
+        });
+        if (allKeys.length === 0) allKeys.push('(No columns)');
+        headRow.innerHTML = allKeys.map(function (k) { return '<th>' + escapeHtml(k) + '</th>'; }).join('');
+        records.forEach(function (record) {
+          var d = record.data || {};
+          var row = document.createElement('tr');
+          row.className = 'record-row';
+          row.setAttribute('data-id', record._id);
+          row.innerHTML = allKeys.map(function (k) {
+            return '<td>' + escapeHtml(String(d[k] != null ? d[k] : '')) + '</td>';
+          }).join('');
+          row.addEventListener('click', function () {
+            window.location.href = 'record.html?id=' + encodeURIComponent(row.getAttribute('data-id'));
+          });
+          tableBody.appendChild(row);
+        });
+      }
+      function escapeHtml(s) {
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+      function escapeAttr(s) {
+        return String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+    })();
+  </script>
+</body>
+</html>

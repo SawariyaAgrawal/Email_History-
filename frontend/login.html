@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Email History</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="login-page">
+    <div class="login-card">
+      <h1>Log in</h1>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <div class="form-group">
+          <label for="regionInput">Region</label>
+          <div class="region-combo">
+            <input type="text" id="regionInput" name="region" placeholder="Type to search or select region (e.g. DELHI LPG RO)" autocomplete="off">
+            <input type="hidden" id="regionValue" name="regionValue">
+            <div class="region-dropdown hidden" id="regionDropdown"></div>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-block" id="submitBtn">Log in</button>
+        <p class="error-msg hidden" id="errorMsg"></p>
+      </form>
+      <p class="link-below-form">Don't have an account? <a href="signup.html">Sign up</a></p>
+    </div>
+  </main>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      if (auth.isAuthenticated()) {
+        window.location.href = 'dashboard.html';
+        return;
+      }
+      var regions = ['AHMEDABAD LPG RO','ANANTAPUR LPG RO','AURANGABAD LPG RO','BANGALORE LRO','BAREILLY LPG RO','BHUBANESWAR LPG RO','CHANDIGARH LPG RO','CHENNAI LPG RO','DELHI LPG RO','DURGAPUR LPG REGIONAL OFFICE','GOA LPG R.O.','HAZIRA LPG REGIONAL OFFICE','HOSHIARPUR LPG RO','HUBLI LRO','HYDERABAD LPG RO','INDORE LPG RO','JABALPUR LPG R.O.','JAIPUR LPG RO','JAMMU LPG RO','JAMSHEDPUR LPG RO','JODHPUR LPG RO','KOCHI LPG RO','KOLKATA LPG RO','LONI LPG RO','LPG - EAST ZONE','LPG - NORTH WEST ZONE','LPG - NORTH ZONE','LPG - SOUTH CENTRAL ZONE','LPG - SOUTH ZONE','LPG - WEST ZONE','MADURAI LPG RO','MANGALORE LPG RO','MUMBAI LPG RO','NAGPUR LPG RO','NAVI MUMBAI LPG R.O.','PUNE LPG RO','RAIPUR LPG REGIONAL OFFICE','SAMBALPUR LPG RO','SILIGURI LPG RO','SOLAPUR LPG REGIONAL OFFICE','VIJAYAWADA LRO','VISAKH LRO'];
+      var regionInput = document.getElementById('regionInput');
+      var regionValue = document.getElementById('regionValue');
+      var regionDropdown = document.getElementById('regionDropdown');
+
+      function showDropdown(filter) {
+        var q = (filter || '').toLowerCase().trim();
+        var list = q ? regions.filter(function (r) { return r.toLowerCase().indexOf(q) !== -1; }) : regions.slice();
+        list.unshift('All');
+        if (list.length === 0) {
+          regionDropdown.classList.add('hidden');
+          return;
+        }
+        regionDropdown.innerHTML = list.map(function (r) {
+          return '<div class="region-option" data-value="' + escapeAttr(r) + '">' + escapeHtml(r) + '</div>';
+        }).join('');
+        regionDropdown.classList.remove('hidden');
+        regionDropdown.querySelectorAll('.region-option').forEach(function (el) {
+          el.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            var v = this.getAttribute('data-value');
+            regionInput.value = v;
+            regionInput.placeholder = v;
+            regionValue.value = v;
+            regionDropdown.classList.add('hidden');
+          });
+        });
+      }
+      function escapeHtml(s) {
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+      function escapeAttr(s) {
+        return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      regionInput.addEventListener('focus', function () {
+        var val = regionInput.value.trim();
+        var ph = (regionInput.placeholder || '').trim();
+        var searchText = val || (regions.indexOf(ph) !== -1 ? ph : '');
+        showDropdown(searchText);
+      });
+      regionInput.addEventListener('input', function () {
+        regionValue.value = '';
+        showDropdown(regionInput.value);
+      });
+      regionInput.addEventListener('blur', function () {
+        setTimeout(function () { regionDropdown.classList.add('hidden'); }, 200);
+      });
+
+      fetch(auth.getApiUrl('/regions'))
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (Array.isArray(data) && data.length > 0) regions = data;
+        })
+        .catch(function () {});
+
+      var form = document.getElementById('loginForm');
+      var errorMsg = document.getElementById('errorMsg');
+      var submitBtn = document.getElementById('submitBtn');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        errorMsg.classList.add('hidden');
+        submitBtn.disabled = true;
+        var email = document.getElementById('email').value.trim();
+        var password = document.getElementById('password').value;
+        var region = regionValue.value.trim() || regionInput.value.trim() || regionInput.placeholder.trim();
+        fetch(auth.getApiUrl('/auth/login'), {
+          method: 'POST',
+          headers: auth.getAuthHeaders(),
+          body: JSON.stringify({ email: email, password: password, region: region || undefined })
+        })
+          .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+          .then(function (result) {
+            if (result.ok) {
+              auth.setToken(result.data.token);
+              auth.setRegion(result.data.region || region || '');
+              window.location.href = 'dashboard.html';
+            } else {
+              errorMsg.textContent = result.data.error || 'Login failed.';
+              errorMsg.classList.remove('hidden');
+              submitBtn.disabled = false;
+            }
+          })
+          .catch(function () {
+            errorMsg.textContent = 'Network error. Please try again.';
+            errorMsg.classList.remove('hidden');
+            submitBtn.disabled = false;
+          });
+      });
+    })();
+  </script>
+</body>
+</html>
