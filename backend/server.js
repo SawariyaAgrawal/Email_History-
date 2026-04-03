@@ -1,7 +1,3 @@
-/**
- * Express server - REST API and static frontend
- * Environment: PORT, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_SECRET, MAX_FILE_SIZE_MB
- */
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env'), override: true });
 const express = require('express');
@@ -10,18 +6,13 @@ const authRoutes = require('./routes/auth');
 const recordsRoutes = require('./routes/records');
 const uploadRoutes = require('./routes/upload');
 const communicationsRoutes = require('./routes/communications');
-const REGIONS = require('./config/regions');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CORS - allow frontend origin if different
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Public: list of regions for login dropdown
-app.get('/api/regions', (req, res) => res.json(REGIONS));
 
 // API routes
 app.use('/api/auth', authRoutes);

@@ -16,8 +16,14 @@
     </div>
   </header>
   <div class="container dashboard-page">
-    <h1>Records <span class="region-badge hidden" id="regionBadge"></span></h1>
-    <p class="record-count hidden" id="recordCount" style="color: #aaa; margin: 4px 0 12px;"></p>
+    <h1>Records</h1>
+    <div class="filter-bar" id="filterBar">
+      <select id="filterZone"><option value="">Select Zone</option></select>
+      <select id="filterRO"><option value="">Select RO</option></select>
+      <select id="filterArea"><option value="">Select Area</option></select>
+      <input type="text" id="searchSAP" placeholder="Search SAP Code...">
+      <button type="button" class="btn btn-clear" id="clearFilters">Clear</button>
+    </div>
     <p class="empty-state hidden" id="emptyState"></p>
     <div class="table-wrap hidden" id="tableWrap">
       <table>
@@ -39,30 +45,131 @@
       document.getElementById('logoutLink').addEventListener('click', function (e) {
         e.preventDefault();
         auth.removeToken();
-        auth.removeRegion();
         window.location.href = 'login.html';
       });
-      var tableHead = document.getElementById('tableHead');
+
       var tableWrap = document.getElementById('tableWrap');
       var emptyState = document.getElementById('emptyState');
       var errorMsg = document.getElementById('errorMsg');
-      var regionBadge = document.getElementById('regionBadge');
-      var region = auth.getRegion();
-      var url = auth.getApiUrl('/records');
-      
-      if (region && String(region).trim() && String(region).toLowerCase() !== 'all') {
-        url += '?region=' + encodeURIComponent(region.trim());
-        regionBadge.textContent = '(Region: ' + region.trim() + ')';
-        regionBadge.classList.remove('hidden');
-      } else {
-        url += '?region=All';
-        regionBadge.textContent = '(All regions)';
-        regionBadge.classList.remove('hidden');
+      var filterZone = document.getElementById('filterZone');
+      var filterRO = document.getElementById('filterRO');
+      var filterArea = document.getElementById('filterArea');
+      var searchSAP = document.getElementById('searchSAP');
+
+      var allRecords = [];
+
+      var COLUMN_RENAME = { 'JDE Distributor Code': 'SAP Code' };
+      function displayKey(k) { return COLUMN_RENAME[k] || k; }
+
+      function getSAPCode(d) {
+        return String(d['SAP Code'] || d['JDE Distributor Code'] || '');
       }
-      
-      fetch(url, {
-        headers: auth.getAuthHeaders()
-      })
+
+      function getFiltered() {
+        var zone = filterZone.value;
+        var ro = filterRO.value;
+        var area = filterArea.value;
+        var sap = searchSAP.value.trim().toLowerCase();
+
+        return allRecords.filter(function (rec) {
+          var d = rec.data || {};
+          if (zone && String(d['Zone'] || '').trim() !== zone) return false;
+          if (ro && String(d['Region'] || '').trim() !== ro) return false;
+          if (area && String(d['Sales Area'] || '').trim() !== area) return false;
+          if (sap && getSAPCode(d).toLowerCase().indexOf(sap) === -1) return false;
+          return true;
+        });
+      }
+
+      function applyFilters() {
+        var filtered = getFiltered();
+
+        if (filtered.length === 0) {
+          emptyState.textContent = 'No records match the current filters.';
+          emptyState.classList.remove('hidden');
+          tableWrap.classList.add('hidden');
+        } else {
+          emptyState.classList.add('hidden');
+          tableWrap.classList.remove('hidden');
+          renderTable(filtered);
+        }
+      }
+
+      function refreshCascade() {
+        var zone = filterZone.value;
+        var ro = filterRO.value;
+
+        // RO options: only ROs that exist within the selected zone (or all if no zone)
+        var roSet = {};
+        allRecords.forEach(function (rec) {
+          var d = rec.data || {};
+          if (zone && String(d['Zone'] || '').trim() !== zone) return;
+          var r = String(d['Region'] || '').trim();
+          if (r) roSet[r] = true;
+        });
+        fillSelect(filterRO, Object.keys(roSet).sort(), 'Select RO');
+
+        // Area options: only areas matching selected zone + RO
+        var areaSet = {};
+        allRecords.forEach(function (rec) {
+          var d = rec.data || {};
+          if (zone && String(d['Zone'] || '').trim() !== zone) return;
+          if (ro && String(d['Region'] || '').trim() !== ro) return;
+          var a = String(d['Sales Area'] || '').trim();
+          if (a) areaSet[a] = true;
+        });
+        fillSelect(filterArea, Object.keys(areaSet).sort(), 'Select Area');
+      }
+
+      function populateDropdowns() {
+        var zones = {};
+        allRecords.forEach(function (rec) {
+          var z = String((rec.data || {})['Zone'] || '').trim();
+          if (z) zones[z] = true;
+        });
+        fillSelect(filterZone, Object.keys(zones).sort(), 'Select Zone');
+        refreshCascade();
+      }
+
+      function fillSelect(el, items, placeholder) {
+        var current = el.value;
+        el.innerHTML = '<option value="">' + escapeHtml(placeholder) + '</option>';
+        items.forEach(function (v) {
+          var opt = document.createElement('option');
+          opt.value = v;
+          opt.textContent = v;
+          el.appendChild(opt);
+        });
+        if (current && items.indexOf(current) !== -1) {
+          el.value = current;
+        } else {
+          el.value = '';
+        }
+      }
+
+      filterZone.addEventListener('change', function () {
+        filterRO.value = '';
+        filterArea.value = '';
+        refreshCascade();
+        applyFilters();
+      });
+      filterRO.addEventListener('change', function () {
+        filterArea.value = '';
+        refreshCascade();
+        applyFilters();
+      });
+      filterArea.addEventListener('change', applyFilters);
+      searchSAP.addEventListener('input', applyFilters);
+      document.getElementById('clearFilters').addEventListener('click', function () {
+        filterZone.value = '';
+        filterRO.value = '';
+        filterArea.value = '';
+        searchSAP.value = '';
+        refreshCascade();
+        applyFilters();
+      });
+
+      fetch(auth.getApiUrl('/records'), { headers: auth.getAuthHeaders() })
         .then(function (res) {
           if (res.status === 401) {
             auth.removeToken();
@@ -78,43 +185,15 @@
             errorMsg.classList.remove('hidden');
             return;
           }
-          var records = Array.isArray(data) ? data : [];
-          var filteredRecords = records;
-
-          var countEl = document.getElementById('recordCount');
-          countEl.textContent = 'Total records: ' + filteredRecords.length;
-          countEl.classList.remove('hidden');
-
-          if (filteredRecords.length === 0) {
-            var regionLabel = region && String(region).trim() && String(region).toLowerCase() !== 'all' ? region.trim() : '';
-            emptyState.innerHTML = regionLabel
-              ? 'No records found for <strong>' + escapeHtml(regionLabel) + '</strong>. <a href="upload.html">Upload an Excel file</a> to add records, or <a href="login.html">log in with &quot;All&quot; regions</a> to see all records.'
-              : 'No records yet. <a href="upload.html">Upload an Excel file</a> to get started.';
-            emptyState.classList.remove('hidden');
-            tableWrap.classList.add('hidden');
-          } else {
-            emptyState.classList.add('hidden');
-            tableWrap.classList.remove('hidden');
-            renderTable(filteredRecords);
-          }
+          allRecords = Array.isArray(data) ? data : [];
+          populateDropdowns();
+          applyFilters();
         })
         .catch(function () {
           errorMsg.textContent = 'Failed to load records.';
           errorMsg.classList.remove('hidden');
         });
-      
-      // Get region from record - prioritize top-level region field
-      function getRegionFromRecord(rec) {
-        var top = rec.region != null ? String(rec.region).trim() : '';
-        if (top) return top;
-        var data = rec.data || {};
-        var keys = Object.keys(data);
-        var regionKey = keys.find(function (k) { return String(k).toLowerCase().trim() === 'region'; });
-        if (!regionKey) regionKey = keys.find(function (k) { return String(k).toLowerCase().indexOf('region') !== -1; });
-        var val = regionKey != null ? data[regionKey] : null;
-        return val != null ? String(val).trim() : '';
-      }
-      
+
       function renderTable(records) {
         var tableBody = document.getElementById('recordsTableBody');
         var headRow = document.getElementById('tableHead').querySelector('tr');
@@ -128,7 +207,7 @@
           });
         });
         if (allKeys.length === 0) allKeys.push('(No columns)');
-        headRow.innerHTML = allKeys.map(function (k) { return '<th>' + escapeHtml(k) + '</th>'; }).join('');
+        headRow.innerHTML = allKeys.map(function (k) { return '<th>' + escapeHtml(displayKey(k)) + '</th>'; }).join('');
         records.forEach(function (record) {
           var d = record.data || {};
           var row = document.createElement('tr');
@@ -143,13 +222,11 @@
           tableBody.appendChild(row);
         });
       }
+
       function escapeHtml(s) {
         var div = document.createElement('div');
         div.textContent = s;
         return div.innerHTML;
-      }
-      function escapeAttr(s) {
-        return String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       }
     })();
   </script>

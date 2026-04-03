@@ -33,7 +33,7 @@
       <div class="visit-dates-table-wrap hidden" id="visitDatesTableWrap">
         <h3 class="visit-dates-heading">Visit dates with forms</h3>
         <table class="visit-dates-table">
-          <thead><tr><th>Visit Date</th><th>Form</th></tr></thead>
+          <thead><tr><th>Visit Date</th><th>Inspection Code</th><th>Form</th></tr></thead>
           <tbody id="visitDatesTableBody"></tbody>
         </table>
       </div>
@@ -49,7 +49,6 @@
       document.getElementById('logoutLink').addEventListener('click', function (e) {
         e.preventDefault();
         auth.removeToken();
-        auth.removeRegion();
         window.location.href = 'login.html';
       });
       var params = new URLSearchParams(window.location.search);
@@ -84,15 +83,11 @@
             return;
           }
           var html = '';
-          if (data.sourceFile) {
-            html += '<div class="detail-row"><span class="detail-label">Source file</span><span class="detail-value">' + escapeHtml(data.sourceFile) + '</span></div>';
-          }
-          if (data.rowIndex) {
-            html += '<div class="detail-row"><span class="detail-label">Row index</span><span class="detail-value">' + escapeHtml(String(data.rowIndex)) + '</span></div>';
-          }
           var d = data.data || {};
+          var renameMap = { 'JDE Distributor Code': 'SAP Code' };
           Object.keys(d).forEach(function (key) {
-            html += '<div class="detail-row"><span class="detail-label">' + escapeHtml(key) + '</span><span class="detail-value">' + escapeHtml(String(d[key] != null ? d[key] : '')) + '</span></div>';
+            var label = renameMap[key] || key;
+            html += '<div class="detail-row"><span class="detail-label">' + escapeHtml(label) + '</span><span class="detail-value">' + escapeHtml(String(d[key] != null ? d[key] : '')) + '</span></div>';
           });
           detailCard.innerHTML = html;
           detailCard.classList.remove('hidden');
@@ -136,6 +131,15 @@
             var w = window.open('communication.html?recordId=' + encodeURIComponent(id) + '&visitDate=' + encodeURIComponent(vd), 'communication', 'width=700,height=700,scrollbars=yes,resizable=yes');
             if (w) w.focus();
           });
+          var sapCode = String(d['SAP Code'] || d['JDE Distributor Code'] || '').trim();
+
+          function makeInspectionCode(sapVal, dateStr) {
+            if (!sapVal || !dateStr) return '';
+            var parts = dateStr.split('-');
+            if (parts.length !== 3) return sapVal;
+            return sapVal + parts[0] + parts[1] + parts[2];
+          }
+
           function loadVisitDatesList() {
             fetch(auth.getApiUrl('/records/' + encodeURIComponent(id) + '/communications'), { headers: auth.getAuthHeaders() })
               .then(function (r) { return r.status === 401 ? null : r.json(); })
@@ -145,8 +149,9 @@
                   return;
                 }
                 visitDatesTableBody.innerHTML = list.map(function (c) {
-                  var d = c.visitDate || '';
-                  return '<tr><td>' + escapeHtml(d) + '</td><td><a href="communication.html?recordId=' + encodeURIComponent(id) + '&visitDate=' + encodeURIComponent(d) + '" target="_blank" rel="noopener">Open form</a></td></tr>';
+                  var vd = c.visitDate || '';
+                  var ic = makeInspectionCode(sapCode, vd);
+                  return '<tr><td>' + escapeHtml(vd) + '</td><td>' + escapeHtml(ic) + '</td><td><a href="communication.html?recordId=' + encodeURIComponent(id) + '&visitDate=' + encodeURIComponent(vd) + '" target="_blank" rel="noopener">View form</a></td></tr>';
                 }).join('');
                 visitDatesTableWrap.classList.remove('hidden');
               })

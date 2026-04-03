@@ -40,7 +40,6 @@
       document.getElementById('logoutLink').addEventListener('click', function (e) {
         e.preventDefault();
         auth.removeToken();
-        auth.removeRegion();
         window.location.href = 'login.html';
       });
       var form = document.getElementById('uploadForm');

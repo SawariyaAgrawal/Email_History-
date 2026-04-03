@@ -1,5 +1,6 @@
 /**
  * Communications API - per-record, per-visit-date form data
+ * Stores all form fields in a single JSONB column (form_data).
  */
 const express = require('express');
 const supabase = require('../config/supabase');
@@ -27,7 +28,7 @@ function formatYMD(d) {
   return `${y}-${m}-${day}`;
 }
 
-// GET /api/records/:recordId/communications - list all visit dates with forms for this record
+// GET /api/records/:recordId/communications - list all visit dates
 router.get('/', async (req, res) => {
   try {
     const recordId = Number(req.params.recordId);
@@ -46,7 +47,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/records/:recordId/communications/by-date?visitDate=YYYY-MM-DD - get one by visit date
+// GET /api/records/:recordId/communications/by-date?visitDate=YYYY-MM-DD
 router.get('/by-date', async (req, res) => {
   try {
     const recordId = Number(req.params.recordId);
@@ -55,71 +56,47 @@ router.get('/by-date', async (req, res) => {
     const visitDateStr = req.query.visitDate;
     if (!visitDateStr) return res.status(400).json({ error: 'visitDate required (YYYY-MM-DD).' });
     const dateFormatted = formatYMD(visitDateStr);
-    if (!dateFormatted) return res.status(400).json({ error: 'Invalid visitDate. Year must be between 1900-2100.' });
+    if (!dateFormatted) return res.status(400).json({ error: 'Invalid visitDate.' });
 
     const { data: doc, error } = await supabase
       .from('communications')
-      .select('*')
+      .select('id, visit_date, form_data')
       .eq('record_id', recordId)
       .eq('visit_date', dateFormatted)
       .maybeSingle();
 
     if (error) throw error;
     if (!doc) return res.json(null);
-    const deviationNo = doc.deviation_noticed_no != null && doc.deviation_noticed_no !== '' ? doc.deviation_noticed_no : (doc.deviation_noticed_no_and_date || '');
+
     res.json({
       _id: String(doc.id),
       visitDate: formatYMD(doc.visit_date),
-      salesOfficerVisitDate: formatYMD(doc.sales_officer_visit_date),
-      majorMinorIrregularities: doc.major_minor_irregularities || '',
-      deviationNoticedNo: deviationNo,
-      deviationNoticedDate: formatYMD(doc.deviation_noticed_date),
-      replyReceivedByDealerDate: formatYMD(doc.reply_received_by_dealer_date),
-      replySatisfactoryYesNo: doc.reply_satisfactory_yes_no || '',
-      impositionOfMDGPenaltyNoticeDate: formatYMD(doc.imposition_of_mdg_penalty_notice_date),
-      reminder1Date: formatYMD(doc.reminder1_date),
-      reminder1ReplyDate: formatYMD(doc.reminder1_reply_date),
-      reminder2Date: formatYMD(doc.reminder2_date),
-      reminder2ReplyDate: formatYMD(doc.reminder2_reply_date),
-      penaltyRecoverBy: doc.penalty_recover_by || '',
-      penaltyRTGSDDNoAndDate: doc.penalty_rtgs_dd_no_and_date || '',
-      emiDates: doc.emi_dates || '',
-      transitionComplete: doc.transition_complete || '',
+      formData: doc.form_data || {},
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch.' });
   }
 });
 
-// POST /api/records/:recordId/communications - create or update (upsert by recordId + visitDate)
+// POST /api/records/:recordId/communications - create or update
 router.post('/', async (req, res) => {
   try {
     const recordId = Number(req.params.recordId);
     if (!Number.isFinite(recordId)) return res.status(400).json({ error: 'Invalid record ID.' });
-    const body = req.body;
-    const visitDateStr = body.visitDate;
-    if (!visitDateStr) return res.status(400).json({ error: 'visitDate required.' });
-    const visitDateFormatted = formatYMD(visitDateStr);
-    if (!visitDateFormatted) return res.status(400).json({ error: 'Invalid visit date. Year must be between 1900 and 2100.' });
+
+    const { visitDate, formData } = req.body;
+    if (!visitDate) return res.status(400).json({ error: 'visitDate required.' });
+    const visitDateFormatted = formatYMD(visitDate);
+    if (!visitDateFormatted) return res.status(400).json({ error: 'Invalid visit date.' });
+
+    if (!formData || typeof formData !== 'object') {
+      return res.status(400).json({ error: 'formData object required.' });
+    }
 
     const update = {
       record_id: recordId,
       visit_date: visitDateFormatted,
-      sales_officer_visit_date: formatYMD(body.salesOfficerVisitDate),
-      major_minor_irregularities: String(body.majorMinorIrregularities || '').trim(),
-      deviation_noticed_no: String(body.deviationNoticedNo || '').trim(),
-      deviation_noticed_date: formatYMD(body.deviationNoticedDate),
-      reply_received_by_dealer_date: formatYMD(body.replyReceivedByDealerDate),
-      reply_satisfactory_yes_no: String(body.replySatisfactoryYesNo || '').trim(),
-      imposition_of_mdg_penalty_notice_date: formatYMD(body.impositionOfMDGPenaltyNoticeDate),
-      reminder1_date: formatYMD(body.reminder1Date),
-      reminder1_reply_date: formatYMD(body.reminder1ReplyDate),
-      reminder2_date: formatYMD(body.reminder2Date),
-      reminder2_reply_date: formatYMD(body.reminder2ReplyDate),
-      penalty_recover_by: String(body.penaltyRecoverBy || '').trim(),
-      penalty_rtgs_dd_no_and_date: String(body.penaltyRTGSDDNoAndDate || '').trim(),
-      emi_dates: String(body.emiDates || '').trim(),
-      transition_complete: String(body.transitionComplete || '').trim(),
+      form_data: formData,
     };
 
     const { data: doc, error } = await supabase

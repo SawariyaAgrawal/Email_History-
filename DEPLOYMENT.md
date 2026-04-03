@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS communications (
   penalty_rtgs_dd_no_and_date            TEXT DEFAULT '',
   emi_dates                              TEXT DEFAULT '',
   transition_complete                    TEXT DEFAULT '',
+  form_data                              JSONB DEFAULT '{}'::jsonb,
   created_at                             TIMESTAMPTZ DEFAULT now(),
   updated_at                             TIMESTAMPTZ DEFAULT now(),
 
@@ -119,6 +120,11 @@ CREATE TABLE IF NOT EXISTS communications (
 > **Important:** The `UNIQUE (record_id, visit_date)` constraint is required for the communication upsert to work. If you already have this table without the constraint, run:
 > ```sql
 > ALTER TABLE communications ADD CONSTRAINT communications_record_visit_unique UNIQUE (record_id, visit_date);
+> ```
+
+> **Migration for existing tables:** If you already have the `communications` table, add the new column:
+> ```sql
+> ALTER TABLE communications ADD COLUMN IF NOT EXISTS form_data JSONB DEFAULT '{}'::jsonb;
 > ```
 
 ### 2.4 Verify Tables

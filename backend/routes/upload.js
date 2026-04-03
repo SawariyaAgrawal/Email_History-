@@ -16,7 +16,13 @@ router.use(auth);
 // Normalize for flexible matching (R.O. vs RO, extra spaces)
 function normalizeRegion(s) {
   if (s == null || s === '') return '';
-  return String(s).trim().toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+  return String(s)
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ')
+    .replace(/\./g, '')
+    .replace(/\s*-\s*/g, ' - ')
+    .trim();
 }
 
 // Match cell value to canonical region from REGIONS list
@@ -54,41 +60,67 @@ router.post('/', upload.single('file'), async (req, res) => {
     const recordsToInsert = [];
     const seen = new Set(); // For duplicate prevention: hash of row content
 
+    console.log('[upload.js] Processing', rows.length, 'rows from Excel file');
+
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      const dataMap = new Map();
+      const dataMap = {};
       let detectedRegion = null;
       
-      // Look for region column: exact "region", or "regional office", "ro", etc.
+      // STEP 1: Look for "Region" column (case-insensitive, exact match)
       let regionKey = Object.keys(row).find((k) => String(k).toLowerCase().trim() === 'region');
+      
+      // STEP 2: If not found, look for column containing "region"
       if (regionKey == null) {
         regionKey = Object.keys(row).find((k) => String(k).toLowerCase().includes('region'));
       }
+      
+      // STEP 3: Look for "Regional Office", "RO", "Office", etc.
       if (regionKey == null) {
-        regionKey = Object.keys(row).find((k) => /regional?\s*office|^ro$|branch|office/i.test(String(k).trim()));
+        regionKey = Object.keys(row).find((k) => {
+          const keyLower = String(k).toLowerCase().trim();
+          return keyLower === 'ro' || 
+                 keyLower === 'regional office' ||
+                 keyLower.includes('regional') ||
+                 keyLower.includes('office') ||
+                 keyLower === 'branch';
+        });
       }
+      
+      // If we found a region column, extract its value
       if (regionKey) {
         const regionValue = row[regionKey];
         if (regionValue != null && String(regionValue).trim() !== '') {
-          const matched = matchRegion(String(regionValue).trim());
+          const regionStr = String(regionValue).trim();
+          
+          // Try to match against known regions
+          const matched = matchRegion(regionStr);
           if (matched) {
             detectedRegion = matched;
+            console.log(`[upload.js] Row ${i + 1}: Found region "${detectedRegion}" from column "${regionKey}"`);
           } else {
             // Even if not in REGIONS list, use the value from Region column
-            detectedRegion = String(regionValue).trim();
+            detectedRegion = regionStr;
+            console.log(`[upload.js] Row ${i + 1}: Using region "${detectedRegion}" from column "${regionKey}" (not in REGIONS list)`);
           }
         }
       }
       
-      // Build the data map
+      // Build the data map (store all columns as JSONB)
       for (const [key, value] of Object.entries(row)) {
         if (key !== undefined && key !== null && String(key).trim() !== '') {
           const k = String(key).trim();
-          dataMap.set(k, value);
+          dataMap[k] = value;
         }
       }
 
-      // If still no region detected, try matching any cell value against REGIONS
+      // Rename legacy column to new name
+      if (dataMap['JDE Distributor Code'] !== undefined && dataMap['SAP Code'] === undefined) {
+        dataMap['SAP Code'] = dataMap['JDE Distributor Code'];
+        delete dataMap['JDE Distributor Code'];
+      }
+
+      // STEP 4: If still no region detected, try matching ANY cell value against REGIONS
       if (!detectedRegion) {
         for (const [key, value] of Object.entries(row)) {
           const v = value != null ? String(value).trim() : '';
@@ -96,6 +128,7 @@ router.post('/', upload.single('file'), async (req, res) => {
             const matched = matchRegion(v);
             if (matched) {
               detectedRegion = matched;
+              console.log(`[upload.js] Row ${i + 1}: Detected region "${detectedRegion}" from cell value in column "${key}"`);
               break;
             }
           }
@@ -103,16 +136,26 @@ router.post('/', upload.single('file'), async (req, res) => {
       }
 
       const finalRegion = detectedRegion || '';
+      
+      if (!finalRegion) {
+        console.warn(`[upload.js] Row ${i + 1}: NO REGION DETECTED! Available columns:`, Object.keys(row).slice(0, 10));
+      }
 
       // Skip completely empty rows
-      if (dataMap.size === 0) continue;
+      if (Object.keys(dataMap).length === 0) {
+        console.log(`[upload.js] Row ${i + 1}: Skipping empty row`);
+        continue;
+      }
 
-      const rowSignature = JSON.stringify(Object.fromEntries(dataMap));
-      if (seen.has(rowSignature)) continue; // Prevent duplicate record insertion
+      const rowSignature = JSON.stringify(dataMap);
+      if (seen.has(rowSignature)) {
+        console.log(`[upload.js] Row ${i + 1}: Skipping duplicate row`);
+        continue;
+      }
       seen.add(rowSignature);
 
       recordsToInsert.push({
-        data: Object.fromEntries(dataMap),
+        data: dataMap,
         uploaded_by: req.user.id,
         source_file: fileName,
         row_index: i + 1,
@@ -124,15 +167,30 @@ router.post('/', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No valid data rows found in the Excel file.' });
     }
 
+    console.log(`[upload.js] Inserting ${recordsToInsert.length} records into database`);
+    
+    // Log first few regions for verification
+    const sampleRegions = recordsToInsert.slice(0, 5).map((r, idx) => ({
+      row: r.row_index,
+      region: r.region,
+      columns: Object.keys(r.data).slice(0, 5)
+    }));
+    console.log('[upload.js] Sample records to insert:', JSON.stringify(sampleRegions, null, 2));
+
     const { error } = await supabase.from('records').insert(recordsToInsert);
-    if (error) throw error;
+    if (error) {
+      console.error('[upload.js] Supabase insert error:', error);
+      throw error;
+    }
+
+    console.log('[upload.js] Successfully inserted', recordsToInsert.length, 'records');
 
     res.status(201).json({
       message: 'File uploaded successfully.',
       count: recordsToInsert.length,
     });
   } catch (err) {
-    console.error('Upload error:', err);
+    console.error('[upload.js] Upload error:', err);
     if (err.message && err.message.includes('password')) {
       return res.status(400).json({ error: 'Protected or invalid Excel file.' });
     }
@@ -142,7 +200,7 @@ router.post('/', upload.single('file'), async (req, res) => {
       try {
         fs.unlinkSync(filePath);
       } catch (e) {
-        console.error('Cleanup upload file error:', e);
+        console.error('[upload.js] Cleanup upload file error:', e);
       }
     }
   }

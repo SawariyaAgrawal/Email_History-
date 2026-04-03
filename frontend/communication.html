@@ -10,73 +10,162 @@
   <div class="container communication-page">
     <h1>Add information</h1>
     <p class="text-muted">Record: <span id="recordIdDisplay"></span> &nbsp;|&nbsp; Visit date: <span id="visitDateDisplay"></span></p>
-    <p class="text-muted form-hint">All fields are optional – you can save partial information.</p>
+
     <form id="communicationForm" class="communication-form" novalidate>
-      <div class="form-group">
-        <label for="salesOfficerVisitDate">1. Sales officer visit date</label>
-        <input type="date" id="salesOfficerVisitDate" name="salesOfficerVisitDate" placeholder="YYYY-MM-DD">
+
+      <!-- Q1 -->
+      <div class="form-step" id="step1">
+        <label>1. Hard Copy Received at RO?</label>
+        <select id="hardCopyReceived">
+          <option value="">-- Select --</option>
+          <option value="Received">Received</option>
+          <option value="Not Received">Not Received</option>
+        </select>
       </div>
-      <div class="form-group">
-        <label for="majorMinorIrregularities">2. Major / Minor Irregularities</label>
-        <input type="text" id="majorMinorIrregularities" name="majorMinorIrregularities" placeholder="Enter Major or Minor irregularities">
+
+      <!-- Q2 -->
+      <div class="form-step hidden" id="step2">
+        <label>2. Hard Copy Received Date</label>
+        <input type="date" id="hardCopyReceivedDate">
       </div>
-      <div class="form-group">
-        <label for="deviationNoticedNo">3a. If Major Irregularities – Deviation Noticed No.</label>
-        <input type="text" id="deviationNoticedNo" name="deviationNoticedNo" placeholder="e.g. No. 123">
+
+      <!-- Q3 -->
+      <div class="form-step hidden" id="step3">
+        <label>3. Show Cause Notice Issued or Not Issued</label>
+        <select id="soCauseNoticeIssued">
+          <option value="">-- Select --</option>
+          <option value="Issued">Issued</option>
+          <option value="Not Issued">Not Issued</option>
+        </select>
       </div>
-      <div class="form-group">
-        <label for="deviationNoticedDate">3b. If Major Irregularities – Deviation Noticed Date</label>
-        <input type="date" id="deviationNoticedDate" name="deviationNoticedDate" placeholder="YYYY-MM-DD">
+
+      <!-- Q4a: Not Issued branch -->
+      <div class="form-step hidden" id="step4a">
+        <label>4. Closer Date</label>
+        <input type="date" id="closerDateNotIssued">
       </div>
-      <div class="form-group">
-        <label for="replyReceivedByDealerDate">4. Reply Received By Dealer date</label>
-        <input type="date" id="replyReceivedByDealerDate" name="replyReceivedByDealerDate" placeholder="YYYY-MM-DD">
+
+      <!-- Q4b: Issued branch -->
+      <div class="form-step hidden" id="step4b">
+        <label>4. Target Show Cause Date <small class="auto-hint">(Hard Copy Received Date + 15 days)</small></label>
+        <input type="date" id="targetSoCauseDate" readonly class="readonly-date">
+
+        <label>Show Cause Notice Issued Date</label>
+        <input type="date" id="soCauseNoticeIssuedDate">
+
+        <label>Reminder 1</label>
+        <input type="date" id="reminder1">
+
+        <label>Reminder 2</label>
+        <input type="date" id="reminder2">
       </div>
-      <div class="form-group">
-        <label for="replySatisfactoryYesNo">5. Reply satisfactory yes / no</label>
-        <input type="text" id="replySatisfactoryYesNo" name="replySatisfactoryYesNo" placeholder="Yes or No">
+
+      <!-- Q5 -->
+      <div class="form-step hidden" id="step5">
+        <label>5. Dealer Reply Target Date <small class="auto-hint">(Show Cause Notice Issued Date + 15 days)</small></label>
+        <input type="date" id="dealerReplyTargetDate" readonly class="readonly-date">
       </div>
-      <div class="form-group">
-        <label for="impositionOfMDGPenaltyNoticeDate">6. If Not satisfactory – Imposition of MDG Penalty notice date</label>
-        <input type="date" id="impositionOfMDGPenaltyNoticeDate" name="impositionOfMDGPenaltyNoticeDate" placeholder="YYYY-MM-DD">
+
+      <!-- Q6 -->
+      <div class="form-step hidden" id="step6">
+        <label>6. Dealer Replied</label>
+        <select id="dealerReplied">
+          <option value="">-- Select --</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
       </div>
-      <div class="form-group">
-        <label for="reminder1Date">7. Reminder 1 date</label>
-        <input type="date" id="reminder1Date" name="reminder1Date" placeholder="YYYY-MM-DD">
+
+      <!-- Q7 -->
+      <div class="form-step hidden" id="step7">
+        <label>7. Dealer Reply Received Date</label>
+        <input type="date" id="dealerReplyReceivedDate">
       </div>
-      <div class="form-group">
-        <label for="reminder1ReplyDate">8. Reply date</label>
-        <input type="date" id="reminder1ReplyDate" name="reminder1ReplyDate" placeholder="YYYY-MM-DD">
+
+      <!-- Q8 -->
+      <div class="form-step hidden" id="step8">
+        <label>8. Show Cause Notice – Dealer Reply Satisfactory</label>
+        <select id="dealerReplySatisfactory">
+          <option value="">-- Select --</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
       </div>
-      <div class="form-group">
-        <label for="reminder2Date">9. Reminder 2 date</label>
-        <input type="date" id="reminder2Date" name="reminder2Date" placeholder="YYYY-MM-DD">
+
+      <!-- Q9a: Satisfactory = Yes -->
+      <div class="form-step hidden" id="step9a">
+        <label>9. Closer Date</label>
+        <input type="date" id="closerDateSatisfactory">
       </div>
-      <div class="form-group">
-        <label for="reminder2ReplyDate">10. Reply date</label>
-        <input type="date" id="reminder2ReplyDate" name="reminder2ReplyDate" placeholder="YYYY-MM-DD">
+
+      <!-- Q9b-Q13: Satisfactory = No -->
+      <div class="form-step hidden" id="step9b">
+        <label>9. Speaking Order Target Date <small class="auto-hint">(Dealer Reply Received Date + 15 days)</small></label>
+        <input type="date" id="speakingOrderTargetDate" readonly class="readonly-date">
+
+        <label>Speaking Order – Major / Minor</label>
+        <select id="speakingOrderType">
+          <option value="">-- Select --</option>
+          <option value="Major">Major</option>
+          <option value="Minor">Minor</option>
+        </select>
+
+        <label>Speaking Order Date</label>
+        <input type="date" id="speakingOrderDate">
+
+        <label>Clause Details</label>
+        <table class="clause-table" id="clauseTable">
+          <thead>
+            <tr><th>Clause No / Description</th><th>Nos</th><th>Amount</th></tr>
+          </thead>
+          <tbody id="clauseTableBody">
+            <tr><td><input type="text" class="clause-desc"></td><td><input type="text" class="clause-nos"></td><td><input type="text" class="clause-amt"></td></tr>
+            <tr><td><input type="text" class="clause-desc"></td><td><input type="text" class="clause-nos"></td><td><input type="text" class="clause-amt"></td></tr>
+            <tr><td><input type="text" class="clause-desc"></td><td><input type="text" class="clause-nos"></td><td><input type="text" class="clause-amt"></td></tr>
+          </tbody>
+        </table>
+        <button type="button" class="btn btn-add-row" id="addClauseRow">+ Add Row</button>
+
+        <label>Remark</label>
+        <textarea id="remark1" rows="3" placeholder="Enter remark..."></textarea>
+
+        <label>Speaking Order Reply by Dealer Target Date <small class="auto-hint">(Speaking Order Date + 15 days)</small></label>
+        <input type="date" id="speakingOrderReplyTargetDate" readonly class="readonly-date">
+
+        <label>10. Reply Received from Dealer</label>
+        <input type="text" id="replyFromDealer" placeholder="Enter reply details...">
+
+        <label>Reply Date</label>
+        <input type="date" id="replyFromDealerDate">
+
+        <label>11. Penalty Recovery Date</label>
+        <input type="date" id="penaltyRecoveryDate">
+
+        <label>Penalty Recovery Amount</label>
+        <input type="text" id="penaltyRecoveryAmount" placeholder="Amount">
+
+        <label>12. Remark</label>
+        <textarea id="remark2" rows="3" placeholder="Enter remark..."></textarea>
+
+        <label>13. File Closer</label>
+        <select id="fileCloser">
+          <option value="">-- Select --</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+
+        <div class="hidden" id="closingDateWrap">
+          <label>Closing Date</label>
+          <input type="date" id="closingDate">
+        </div>
       </div>
-      <div class="form-group">
-        <label for="penaltyRecoverBy">11. Penalty recover by TAR account / by EMI / By RTGS DD – No. and Date</label>
-        <input type="text" id="penaltyRecoverBy" name="penaltyRecoverBy" placeholder="TAR account / EMI / RTGS DD">
-      </div>
-      <div class="form-group">
-        <label for="penaltyRTGSDDNoAndDate">RTGS/DD No. and Date (if applicable)</label>
-        <input type="text" id="penaltyRTGSDDNoAndDate" name="penaltyRTGSDDNoAndDate" placeholder="No. and Date">
-      </div>
-      <div class="form-group">
-        <label for="emiDates">12. If EMI then EMI dates</label>
-        <input type="text" id="emiDates" name="emiDates" placeholder="EMI dates">
-      </div>
-      <div class="form-group">
-        <label for="transitionComplete">13. Transition Complete</label>
-        <input type="text" id="transitionComplete" name="transitionComplete" placeholder="Yes / No or details">
-      </div>
-      <button type="submit" class="btn">Save</button>
+
+      <button type="submit" class="btn" id="saveBtn">Save</button>
     </form>
     <p class="error-msg hidden" id="errorMsg"></p>
     <p class="success-msg hidden" id="successMsg"></p>
   </div>
+
   <script src="js/auth.js"></script>
   <script>
     (function () {
@@ -89,69 +178,188 @@
       if (!recordId || !visitDate) {
         document.getElementById('errorMsg').textContent = 'Record ID and Visit date are required.';
         document.getElementById('errorMsg').classList.remove('hidden');
+        return;
       }
 
-      function toYMD(d) {
-        if (!d) return '';
-        var x = new Date(d);
-        if (isNaN(x.getTime())) return '';
-        var y = x.getFullYear(), m = x.getMonth() + 1, day = x.getDate();
-        return y + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+      // --- Helpers ---
+      function $(id) { return document.getElementById(id); }
+      function show(id) { $(id).classList.remove('hidden'); }
+      function hide(id) { $(id).classList.add('hidden'); }
+      function isHidden(id) { return $(id).classList.contains('hidden'); }
+      function val(id) { return $(id).value; }
+      function setVal(id, v) { $(id).value = v || ''; }
+
+      function addDays(dateStr, n) {
+        if (!dateStr) return '';
+        var d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        d.setDate(d.getDate() + n);
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
       }
 
-      function loadExisting() {
-        if (!recordId || !visitDate) return;
-        fetch(auth.getApiUrl('/records/' + encodeURIComponent(recordId) + '/communications/by-date?visitDate=' + encodeURIComponent(visitDate)), { headers: auth.getAuthHeaders() })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            if (!data) return;
-            if (data.salesOfficerVisitDate) document.getElementById('salesOfficerVisitDate').value = data.salesOfficerVisitDate;
-            if (data.majorMinorIrregularities != null) document.getElementById('majorMinorIrregularities').value = data.majorMinorIrregularities;
-            if (data.deviationNoticedNo != null) document.getElementById('deviationNoticedNo').value = data.deviationNoticedNo;
-            if (data.deviationNoticedDate) document.getElementById('deviationNoticedDate').value = data.deviationNoticedDate;
-            if (data.replyReceivedByDealerDate) document.getElementById('replyReceivedByDealerDate').value = data.replyReceivedByDealerDate;
-            if (data.replySatisfactoryYesNo != null) document.getElementById('replySatisfactoryYesNo').value = data.replySatisfactoryYesNo;
-            if (data.impositionOfMDGPenaltyNoticeDate) document.getElementById('impositionOfMDGPenaltyNoticeDate').value = data.impositionOfMDGPenaltyNoticeDate;
-            if (data.reminder1Date) document.getElementById('reminder1Date').value = data.reminder1Date;
-            if (data.reminder1ReplyDate) document.getElementById('reminder1ReplyDate').value = data.reminder1ReplyDate;
-            if (data.reminder2Date) document.getElementById('reminder2Date').value = data.reminder2Date;
-            if (data.reminder2ReplyDate) document.getElementById('reminder2ReplyDate').value = data.reminder2ReplyDate;
-            if (data.penaltyRecoverBy != null) document.getElementById('penaltyRecoverBy').value = data.penaltyRecoverBy;
-            if (data.penaltyRTGSDDNoAndDate != null) document.getElementById('penaltyRTGSDDNoAndDate').value = data.penaltyRTGSDDNoAndDate;
-            if (data.emiDates != null) document.getElementById('emiDates').value = data.emiDates;
-            if (data.transitionComplete != null) document.getElementById('transitionComplete').value = data.transitionComplete;
-          })
-          .catch(function () {});
-      }
-      loadExisting();
+      // All conditional step IDs in order
+      var conditionalSteps = ['step2','step3','step4a','step4b','step5','step6','step7','step8','step9a','step9b'];
 
-      document.getElementById('communicationForm').addEventListener('submit', function (e) {
-        e.preventDefault();
-        document.getElementById('errorMsg').classList.add('hidden');
-        document.getElementById('successMsg').classList.add('hidden');
-        if (!recordId || !visitDate) {
-          document.getElementById('errorMsg').textContent = 'Record ID and Visit date are required.';
-          document.getElementById('errorMsg').classList.remove('hidden');
+      function hideFrom(startId) {
+        var found = false;
+        conditionalSteps.forEach(function (id) {
+          if (id === startId) found = true;
+          if (found) hide(id);
+        });
+      }
+
+      // --- Visibility Logic ---
+      function updateVisibility() {
+        // Q1
+        var hcr = val('hardCopyReceived');
+        if (hcr !== 'Received') { hideFrom('step2'); return; }
+        show('step2');
+
+        // Q2 -> Q3 (show Q3 once step2 is visible)
+        show('step3');
+
+        // Q3
+        var scn = val('soCauseNoticeIssued');
+        if (!scn) { hideFrom('step4a'); return; }
+        if (scn === 'Not Issued') {
+          show('step4a');
+          hide('step4b'); hide('step5'); hide('step6'); hide('step7'); hide('step8'); hide('step9a'); hide('step9b');
           return;
         }
+        // Issued
+        hide('step4a');
+        show('step4b');
+        setVal('targetSoCauseDate', addDays(val('hardCopyReceivedDate'), 15));
+
+        // Q4b -> Q5 (once soCauseNoticeIssuedDate filled)
+        var scnDate = val('soCauseNoticeIssuedDate');
+        if (!scnDate) { hideFrom('step5'); return; }
+        show('step5');
+        setVal('dealerReplyTargetDate', addDays(scnDate, 15));
+
+        // Q5 -> Q6
+        show('step6');
+
+        // Q6
+        var dr = val('dealerReplied');
+        if (dr !== 'Yes') { hideFrom('step7'); return; }
+        show('step7');
+
+        // Q7 -> Q8
+        var drDate = val('dealerReplyReceivedDate');
+        if (!drDate) { hideFrom('step8'); return; }
+        show('step8');
+
+        // Q8
+        var sat = val('dealerReplySatisfactory');
+        if (!sat) { hide('step9a'); hide('step9b'); return; }
+        if (sat === 'Yes') {
+          show('step9a');
+          hide('step9b');
+          return;
+        }
+        // No
+        hide('step9a');
+        show('step9b');
+        setVal('speakingOrderTargetDate', addDays(drDate, 15));
+        setVal('speakingOrderReplyTargetDate', addDays(val('speakingOrderDate'), 15));
+
+        // File Closer sub-condition
+        var fc = val('fileCloser');
+        if (fc === 'Yes') show('closingDateWrap'); else hide('closingDateWrap');
+      }
+
+      // Attach change/input events to all interactive elements
+      ['hardCopyReceived','soCauseNoticeIssued','dealerReplied','dealerReplySatisfactory','fileCloser'].forEach(function (id) {
+        $(id).addEventListener('change', updateVisibility);
+      });
+      ['hardCopyReceivedDate','soCauseNoticeIssuedDate','dealerReplyReceivedDate','speakingOrderDate'].forEach(function (id) {
+        $(id).addEventListener('change', updateVisibility);
+      });
+
+      // --- Clause Table ---
+      $('addClauseRow').addEventListener('click', function () {
+        var row = document.createElement('tr');
+        row.innerHTML = '<td><input type="text" class="clause-desc"></td><td><input type="text" class="clause-nos"></td><td><input type="text" class="clause-amt"></td>';
+        $('clauseTableBody').appendChild(row);
+      });
+
+      function getClauseTable() {
+        var rows = [];
+        $('clauseTableBody').querySelectorAll('tr').forEach(function (tr) {
+          var desc = tr.querySelector('.clause-desc').value.trim();
+          var nos = tr.querySelector('.clause-nos').value.trim();
+          var amt = tr.querySelector('.clause-amt').value.trim();
+          if (desc || nos || amt) rows.push({ description: desc, nos: nos, amount: amt });
+        });
+        return rows;
+      }
+
+      function setClauseTable(arr) {
+        if (!Array.isArray(arr) || arr.length === 0) return;
+        var body = $('clauseTableBody');
+        body.innerHTML = '';
+        arr.forEach(function (item) {
+          var row = document.createElement('tr');
+          row.innerHTML = '<td><input type="text" class="clause-desc" value="' + escapeAttr(item.description || '') + '"></td>'
+            + '<td><input type="text" class="clause-nos" value="' + escapeAttr(item.nos || '') + '"></td>'
+            + '<td><input type="text" class="clause-amt" value="' + escapeAttr(item.amount || '') + '"></td>';
+          body.appendChild(row);
+        });
+      }
+
+      function escapeAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+      // --- All field IDs for save/load ---
+      var FIELDS = [
+        'hardCopyReceived','hardCopyReceivedDate',
+        'soCauseNoticeIssued','closerDateNotIssued',
+        'targetSoCauseDate','soCauseNoticeIssuedDate','reminder1','reminder2',
+        'dealerReplyTargetDate','dealerReplied','dealerReplyReceivedDate',
+        'dealerReplySatisfactory','closerDateSatisfactory',
+        'speakingOrderTargetDate','speakingOrderType','speakingOrderDate',
+        'remark1','speakingOrderReplyTargetDate',
+        'replyFromDealer','replyFromDealerDate',
+        'penaltyRecoveryDate','penaltyRecoveryAmount','remark2',
+        'fileCloser','closingDate'
+      ];
+
+      function collectFormData() {
+        var fd = {};
+        FIELDS.forEach(function (id) { fd[id] = val(id) || ''; });
+        fd.clauseTable = getClauseTable();
+        return fd;
+      }
+
+      function populateForm(fd) {
+        if (!fd) return;
+        FIELDS.forEach(function (id) { if (fd[id] != null) setVal(id, fd[id]); });
+        if (fd.clauseTable) setClauseTable(fd.clauseTable);
+        updateVisibility();
+      }
+
+      // --- Load existing ---
+      fetch(auth.getApiUrl('/records/' + encodeURIComponent(recordId) + '/communications/by-date?visitDate=' + encodeURIComponent(visitDate)), { headers: auth.getAuthHeaders() })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.formData) populateForm(data.formData);
+        })
+        .catch(function () {});
+
+      // --- Save ---
+      $('communicationForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        $('errorMsg').classList.add('hidden');
+        $('successMsg').classList.add('hidden');
+
         var payload = {
           visitDate: visitDate,
-          salesOfficerVisitDate: document.getElementById('salesOfficerVisitDate').value || null,
-          majorMinorIrregularities: document.getElementById('majorMinorIrregularities').value,
-          deviationNoticedNo: document.getElementById('deviationNoticedNo').value,
-          deviationNoticedDate: document.getElementById('deviationNoticedDate').value || null,
-          replyReceivedByDealerDate: document.getElementById('replyReceivedByDealerDate').value || null,
-          replySatisfactoryYesNo: document.getElementById('replySatisfactoryYesNo').value,
-          impositionOfMDGPenaltyNoticeDate: document.getElementById('impositionOfMDGPenaltyNoticeDate').value || null,
-          reminder1Date: document.getElementById('reminder1Date').value || null,
-          reminder1ReplyDate: document.getElementById('reminder1ReplyDate').value || null,
-          reminder2Date: document.getElementById('reminder2Date').value || null,
-          reminder2ReplyDate: document.getElementById('reminder2ReplyDate').value || null,
-          penaltyRecoverBy: document.getElementById('penaltyRecoverBy').value,
-          penaltyRTGSDDNoAndDate: document.getElementById('penaltyRTGSDDNoAndDate').value,
-          emiDates: document.getElementById('emiDates').value,
-          transitionComplete: document.getElementById('transitionComplete').value
+          formData: collectFormData()
         };
+
         fetch(auth.getApiUrl('/records/' + encodeURIComponent(recordId) + '/communications'), {
           method: 'POST',
           headers: auth.getAuthHeaders(),
@@ -160,17 +368,17 @@
           .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }).catch(function () { return { ok: false, data: {} }; }); })
           .then(function (result) {
             if (result.ok) {
-              document.getElementById('successMsg').textContent = 'Saved successfully.';
-              document.getElementById('successMsg').classList.remove('hidden');
+              $('successMsg').textContent = 'Saved successfully.';
+              $('successMsg').classList.remove('hidden');
               if (window.opener && window.opener.refreshVisitDatesList) window.opener.refreshVisitDatesList();
             } else {
-              document.getElementById('errorMsg').textContent = result.data.error || 'Failed to save.';
-              document.getElementById('errorMsg').classList.remove('hidden');
+              $('errorMsg').textContent = result.data.error || 'Failed to save.';
+              $('errorMsg').classList.remove('hidden');
             }
           })
           .catch(function () {
-            document.getElementById('errorMsg').textContent = 'Network error.';
-            document.getElementById('errorMsg').classList.remove('hidden');
+            $('errorMsg').textContent = 'Network error.';
+            $('errorMsg').classList.remove('hidden');
           });
       });
     })();
